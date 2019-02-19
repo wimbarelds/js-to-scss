@@ -1,20 +1,32 @@
-var polyfill = require("@riim/object-entries-polyfill");
-
-function flattenObjSass(obj, prefix = "$", transform = (key, val) => val) {
-  return Object.entries(obj).reduce((go, el) => {
-    let key = `${prefix}${el[0]}`;
-    let val = el[1];
-    if (typeof val === "object" && !Array.isArray(val) && val) {
-      return go + `${flattenObjSass(val, `${key}-`, transform)}`;
-    } else {
-      return (
-        go +
-        `${key}: ${
-          Array.isArray(val) ? `(${transform(key, val)})` : transform(key, val)
-        }; `
-      );
+function valToScssValue(val) {
+    let type = typeof val;
+    if (type === 'object') {
+        if (val === null) throw '[JS-TO-SCSS Error] value NULL unsupported';
+        if (val instanceof Array) {
+            const scssValues = val.map((v) => valToScssValue(v));
+            return `( ${scssValues.join(' , ')} )`;
+        }
+        return objToScssMap(val);
     }
-  }, "");
+    return `${val}`;
 }
 
-module.exports = flattenObjSass;
+function objToScssMap(obj) {
+    let keys = Object.keys(obj);
+    let scssLines = keys.map((key) => {
+        let val = valToScssValue(obj[key]);
+        return `  ${key}: ${val}`;
+    });
+    return `(\n${scssLines.join(',\n')}\n)`;
+}
+
+function jsToScss(obj) {
+    const keys = Object.keys(obj);
+    const scssVariableLines = keys.map((key) => {
+        const scssValue = valToScssValue(obj[key]);
+        return `$${key}: ${scssValue};`;
+    });
+    return scssVariableLines.join('\n');
+}
+
+module.exports = jsToScss;
